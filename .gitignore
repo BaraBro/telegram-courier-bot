@@ -2,9 +2,6 @@
 venv/
 __pycache__/
 
-# Файлы конфигурации / среды
-.env
-
 # Логи
 logs/
 *.log
@@ -15,3 +12,9 @@ statuses.json
 # IDE / macOS
 .vscode/
 .DS_Store
+
+# артефакты
+project.zip
+.env
+__pycache__/
+*.py[cod]

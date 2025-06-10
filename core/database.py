@@ -1,55 +1,86 @@
+# core/database.py
+
+import os
 import json
+import time
 import shutil
-import logging
-from pathlib import Path
-from typing import Dict, Any
+from threading import Lock
 
-from config import ENCRYPTION_KEY
-from utils.encryption import decrypt_data, encrypt_data
+# вместо from utils.encryption import encrypt, decrypt
+from utils import encryption
 
-logger = logging.getLogger(__name__)
+# Пути к файлу и директории бэкапов
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+DB_FILE = os.path.join(BASE_DIR, "statuses.json")
+BACKUP_DIR = os.path.join(BASE_DIR, "backups")
 
-STATUS_FILE = Path("statuses.json")
-BACKUP_FILE = STATUS_FILE.with_suffix(".json.backup")
+class Database:
+    def __init__(self):
+        self._lock = Lock()
+        self._data = self._load()
 
-def load_statuses() -> Dict[str, Dict[str, Any]]:
-    if not STATUS_FILE.exists():
-        return {}
-    raw = STATUS_FILE.read_bytes()
-    # Если незашифрованный JSON
-    if raw.startswith(b"{") or raw.startswith(b"["):
+    def _load(self) -> dict:
+        """Загрузить JSON (распаковать, если зашифрован), или инициализировать."""
+        if not os.path.exists(DB_FILE):
+            data = {"statuses": {}, "locations": {}, "users_started": []}
+            # сразу создать файл
+            self._write_raw(json.dumps(data).encode())
+            return data
+
+        raw = open(DB_FILE, "rb").read()
         try:
-            return json.loads(raw.decode("utf-8"))
-        except:
-            logger.warning("Plain JSON parse failed, trying decrypt")
-    decrypted = decrypt_data(raw, ENCRYPTION_KEY)
-    if not decrypted:
-        logger.warning("Decrypt returned None, loading backup")
-        return _load_backup()
-    try:
-        return json.loads(decrypted)
-    except Exception as e:
-        logger.warning(f"JSON decode after decrypt failed: {e}")
-        return _load_backup()
+            # вызываем метод из модуля encryption
+            text = encryption.decrypt(raw)
+        except Exception:
+            # предположим, что файл не зашифрован
+            text = raw.decode("utf-8")
+        return json.loads(text)
 
-def _load_backup() -> Dict[str, Dict[str, Any]]:
-    if not BACKUP_FILE.exists():
-        return {}
-    try:
-        return json.loads(BACKUP_FILE.read_text(encoding="utf-8"))
-    except Exception as e:
-        logger.error(f"Backup load failed: {e}")
-        return {}
+    def _write_raw(self, payload: bytes) -> None:
+        """Сохранить payload в DB_FILE, предварительно забэкапив старый."""
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+        if os.path.exists(DB_FILE):
+            timestamp = int(time.time())
+            backup_path = os.path.join(BACKUP_DIR, f"{timestamp}_statuses.json")
+            shutil.copy2(DB_FILE, backup_path)
+        with open(DB_FILE, "wb") as f:
+            f.write(payload)
 
-def save_statuses(data: Dict[str, Dict[str, Any]]) -> bool:
-    try:
-        if STATUS_FILE.exists():
-            shutil.copy2(STATUS_FILE, BACKUP_FILE)
-        raw = json.dumps(data, ensure_ascii=False, indent=4)
-        encrypted = encrypt_data(raw, ENCRYPTION_KEY)
-        STATUS_FILE.write_bytes(encrypted)
-        return True
-    except Exception as e:
-        logger.error(f"Failed to save statuses: {e}", exc_info=True)
-        return False
+    def _save(self) -> None:
+        """Сериализовать self._data в JSON, зашифровать и записать."""
+        with self._lock:
+            text = json.dumps(self._data)
+            # вызываем метод из модуля encryption
+            encrypted = encryption.encrypt(text)
+            self._write_raw(encrypted)
 
+    # ======== Методы для статусов курьеров ========
+    def load_statuses(self) -> dict[int, str]:
+        return self._data.get("statuses", {})
+
+    def save_status(self, user_id: int, status: str) -> None:
+        self._data.setdefault("statuses", {})[str(user_id)] = status
+        self._save()
+
+    # ======== Методы для локаций ========
+    def load_locations(self) -> dict[int, dict]:
+        return self._data.get("locations", {})
+
+    def save_location(self, user_id: int, latitude: float, longitude: float, period: str) -> None:
+        self._data.setdefault("locations", {})[str(user_id)] = {
+            "lat": latitude,
+            "lon": longitude,
+            "period": period,
+            "timestamp": int(time.time())
+        }
+        self._save()
+
+    # ======== Методы для флага /start ========
+    def set_started(self, user_id: int) -> None:
+        users = set(self._data.get("users_started", []))
+        users.add(user_id)
+        self._data["users_started"] = list(users)
+        self._save()
+
+    def has_started(self, user_id: int) -> bool:
+        return user_id in set(self._data.get("users_started", []))

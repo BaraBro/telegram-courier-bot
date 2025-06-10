@@ -1,39 +1,19 @@
 # keyboards.py
 
-from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-
-# ─── INLINE-СТАТУСЫ ──────────────────────────────────────
-STATUS_BUTTONS = [
-    ("🏠 База",     "status_base"),
-    ("🚚 Уехал",    "status_away"),
-    ("🔧 Сломался", "status_broke"),
-    ("📋 По делам", "status_errands"),
-    ("⛽ Заправка", "status_fuel"),
-]
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
 def get_status_keyboard() -> InlineKeyboardMarkup:
-    """
-    Inline-клавиатура:
-    по 2 кнопки в ряд, пять статусов.
-    """
-    builder = InlineKeyboardBuilder()
-    for text, cb in STATUS_BUTTONS:
-        builder.button(text=text, callback_data=cb)
-    builder.adjust(2)
-    return builder.as_markup()
-
-# ─── REPLY-ЛОКАЦИЯ ────────────────────────────────────────
-def get_location_keyboard() -> ReplyKeyboardMarkup:
-    """
-    Однократная reply-клавиатура:
-    📍 «Поделиться местоположением»
-    """
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📍 Поделиться местоположением", request_location=True)]
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=True,
+    kb = InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        InlineKeyboardButton("🏠 База", callback_data="status_base"),
+        InlineKeyboardButton("🚚 Уехал", callback_data="status_away"),
+        InlineKeyboardButton("🔧 Сломался", callback_data="status_broke"),
+        InlineKeyboardButton("📋 По делам", callback_data="status_busy"),
+        InlineKeyboardButton("⛽ Заправка", callback_data="status_fuel"),
     )
+    return kb
 
+def get_location_keyboard() -> ReplyKeyboardMarkup:
+    kb = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    kb.add(KeyboardButton("Отправить локацию", request_location=True))
+    return kb

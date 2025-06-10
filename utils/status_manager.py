@@ -1,43 +1,45 @@
+# utils/status_manager.py
+
+from core.database import Database
+from core.database import DB_FILE  # если нужно знать путь или для логирования
 import logging
-import pytz
-from datetime import datetime
-from typing import Dict, Any
-from core.database import load_statuses, save_statuses
-import config
 
 logger = logging.getLogger(__name__)
+_db = Database()
 
 class StatusManager:
-    def __init__(self):
-        self._tz = pytz.timezone(config.TIMEZONE)
-        self._data: Dict[str, Dict[str, Any]] = load_statuses()
+    """Формирует отчёт по текущим статусам курьеров."""
 
-    def set(self, user_id: int, status: str, full_name: str) -> None:
-        ts = datetime.now(self._tz).isoformat()
-        self._data[str(user_id)] = {"status": status, "full_name": full_name, "timestamp": ts}
-        if not save_statuses(self._data):
-            logger.error("Failed to persist status")
+    def __init__(self):
+        # можно хранить отдельное соединение, если нужно
+        self._db = _db
+
+    def set_status(self, user_id: int, status: str) -> None:
+        """
+        (Если используется) Сохранить статус курьера.
+        В противном случае – колбеки сами вызывают db.save_status().
+        """
+        self._db.save_status(user_id, status)
+        logger.info(f"Status saved: user {user_id} -> {status}")
 
     def get_report(self) -> str:
-        now = datetime.now(self._tz)
-        groups = {k: [] for k in ("База","Уехали","Сломались","По делам","Заправка","Не вышли")}
-        for uid, info in self._data.items():
-            st = info["status"]
-            name = info["full_name"]
-            ts = info.get("timestamp")
-            timer = "—"
-            if ts:
-                try:
-                    dt = datetime.fromisoformat(ts)
-                    diff = now - dt
-                    h = diff.seconds//3600; m = (diff.seconds%3600)//60
-                    timer = f"{h}ч {m}м"
-                except: pass
-            entry = f"{name} ({timer})"
-            groups.get(st, groups["Не вышли"]).append(entry)
-        text = "<b>Текущий статус курьеров:</b>\n\n"
-        for cat, lst in groups.items():
-            text += f"─ <i>{cat}</i>:\n"
-            text += "   • " + "\n   • ".join(lst) if lst else "   • (нет)"
-            text += "\n\n"
-        return text
+        """
+        Собрать HTML-отчёт вида:
+        <b>Отчёт статусов:</b>
+        • User FullName — статус
+        • ...
+        """
+        statuses = self._db.load_statuses()  # возвращает dict[str, str]
+        if not statuses:
+            return "<b>Нет данных по статусам.</b>"
+
+        parts = ["<b>📋 Отчёт статусов курьеров:</b>\n"]
+        for uid_str, status in statuses.items():
+            try:
+                uid = int(uid_str)
+                # здесь можно подтягивать user.full_name через Telegram API,
+                # но для простоты оставим ID
+                parts.append(f"• <code>{uid}</code> — {status}")
+            except ValueError:
+                parts.append(f"• {uid_str} — {status}")
+        return "\n".join(parts)

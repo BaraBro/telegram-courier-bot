@@ -1,51 +1,52 @@
 # config.py
 
-import os
-from dotenv import load_dotenv
-from datetime import time, datetime
-import pytz
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator
 
-# ─── ЗАГРУЗКА .env ───────────────────────────────────────
-load_dotenv()
-BOT_TOKEN     = os.getenv("BOT_TOKEN") or ""
-GROUP_CHAT_ID = int(os.getenv("GROUP_CHAT_ID", "0"))
 
-if not BOT_TOKEN:
-    raise RuntimeError("❌ BOT_TOKEN не задан в .env")
-if GROUP_CHAT_ID == 0:
-    raise RuntimeError("❌ GROUP_CHAT_ID не задан или некорректен")
+class Settings(BaseSettings):
+    # Указываем файл окружения
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
-# ─── ЧАСОВОЙ ПОЯС И РАБОЧЕЕ ВРЕМЯ ─────────────────────────
-TIMEZONE      = os.getenv("TIMEZONE", "Europe/Moscow")
-tz            = pytz.timezone(TIMEZONE)
+    # Будем читать их именно под такими именами из .env
+    bot_token: str
+    encryption_key: str | None = None
+    group_chat_id: int
+    authorized_ids: set[int] = Field(default_factory=set)
+    work_start: str   # формат "HH:MM"
+    work_end: str     # формат "HH:MM"
+    timezone: str
 
-def _parse_hhmm(s: str) -> time:
-    hh, mm = map(int, s.split(":"))
-    return time(hh, mm)
+    # Проверяем формат времени
+    @field_validator("work_start", "work_end")
+    @classmethod
+    def _validate_time_fmt(cls, v: str) -> str:
+        parts = v.split(":")
+        if len(parts) != 2 or not all(p.isdigit() for p in parts):
+            raise ValueError("Время должно быть в формате HH:MM")
+        hh, mm = map(int, parts)
+        if not (0 <= hh <= 23 and 0 <= mm <= 59):
+            raise ValueError("Часы 00–23, минуты 00–59")
+        return v
 
-WORK_START    = _parse_hhmm(os.getenv("WORK_START", "06:55"))
-WORK_END      = _parse_hhmm(os.getenv("WORK_END",   "00:45"))
-WORK_START_STR = WORK_START.strftime("%H:%M")
-WORK_END_STR   = WORK_END.strftime("%H:%M")
 
-def in_work_time() -> bool:
-    now = datetime.now(tz).time()
-    if WORK_START < WORK_END:
-        return WORK_START <= now <= WORK_END
-    # переход через полночь
-    return now >= WORK_START or now <= WORK_END
+# Загружаем и валидируем .env
+try:
+    settings = Settings()
+except Exception as e:
+    print("Ошибка в конфиге:", e)
+    raise
 
-# ─── АВТОРИЗОВАННЫЕ ──────────────────────────────────────
-AUTHORIZED_IDS = [662982044, 277821395, 5272565513, 5049992114
-                  ]
-authorized_map = {
-    662982044: "Игорь Ладохин",
-    277821395: "Влад Копцев",
-    5272565513: "Кирилл Фролов",
-    5049992114: "Саша"
-}
+# Переэкспортируем под теми именами, какие ждёт остальной код
+TOKEN          = settings.bot_token
+ENCRYPTION_KEY = settings.encryption_key
+GROUP_CHAT_ID  = settings.group_chat_id
+AUTHORIZED_IDS = settings.authorized_ids
 
-# ─── КЛЮЧ ШИФРОВАНИЯ ───────────────────────────────────────
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY") or None
-# (Необходимо для core/database.py)
-
+# Приводим к удобочитаемым именам
+WORK_START_STR = settings.work_start
+WORK_END_STR   = settings.work_end
+TIMEZONE       = settings.timezone

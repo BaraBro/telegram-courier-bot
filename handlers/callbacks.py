@@ -1,70 +1,54 @@
 # handlers/callbacks.py
 
 import logging
-from datetime import datetime
-
-import pytz
-from aiogram import Router
-from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import CallbackQuery
+from aiogram import Router, types, Bot
+from aiogram.filters import Text
 
 import config
-from core.database import load_statuses, save_statuses
-from utils.time_utils import in_work_time
 from keyboards import get_status_keyboard
+from core.database import Database
+from utils.time_utils import in_work_time
 
 router = Router()
 logger = logging.getLogger(__name__)
+db = Database()
 
-@router.callback_query()
-async def process_callback(query: CallbackQuery):
-    user = query.from_user
-    key  = query.data
-    logger.info(f"Callback {key} от {user.id} ({user.full_name})")
+@router.callback_query(Text(startswith="status_"))
+async def on_status_callback(cq: types.CallbackQuery, bot: Bot):
+    user = cq.from_user
 
+    # Проверка прав
     if user.id not in config.AUTHORIZED_IDS:
-        return await query.answer("❌ Нет прав", show_alert=True)
+        return await cq.answer("❌ У вас нет прав для этой операции.", show_alert=True)
+
+    # Проверка рабочего времени
     if not in_work_time():
-        return await query.answer(
-            f"⏰ Доступно {config.WORK_START_STR}–{config.WORK_END_STR}", show_alert=True
+        return await cq.answer(
+            f"⏰ Кнопки активны с {config.WORK_START_STR} до {config.WORK_END_STR} ({config.TIMEZONE}).",
+            show_alert=True
         )
 
-    mapping = {
-        "status_base":    ("🏠", "База"),
-        "status_away":    ("🚚", "Уехал"),
-        "status_broke":   ("🔧", "Сломался"),
-        "status_errands": ("📋", "По делам"),
-        "status_fuel":    ("⛽", "Заправка"),
+    # Извлечь ключ статуса и получить метку
+    key = cq.data.split("status_", 1)[1]
+    labels = {
+        "base": "🏠 База",
+        "away": "🚚 Уехал",
+        "broke": "🔧 Сломался",
+        "busy": "📋 По делам",
+        "fuel": "⛽ Заправка",
     }
-    if key not in mapping:
-        return await query.answer()
+    status_label = labels.get(key, key)
 
-    emoji, text = mapping[key]
-    tz = pytz.timezone(config.TIMEZONE)
-    now = datetime.now(tz).strftime("%H:%M")
+    # Сохранить в БД
+    db.save_status(user.id, status_label)
+    logger.info(f"User {user.id} set status {status_label}")
 
-    # Сохраняем
-    data = load_statuses()
-    data[str(user.id)] = {
-        "status": text,
-        "full_name": user.full_name,
-        "timestamp": datetime.now(tz).isoformat()
-    }
-    save_statuses(data)
+    # Подтверждение пользователю
+    await cq.answer(f"✅ Статус сохранён: {status_label}", show_alert=False)
 
-    # Публикация
-    public = f"{emoji} <b>{user.full_name}</b> «{text}» ({now})"
-    await query.bot.send_message(config.GROUP_CHAT_ID, public, parse_mode="HTML")
-
-    # Обновляем клавиатуру (если меняется)
-    try:
-        await query.message.edit_reply_markup(reply_markup=get_status_keyboard())
-    except TelegramBadRequest as e:
-        if "message is not modified" in str(e):
-            logger.debug("Клавиатура без изменений, пропускаю edit.")
-        else:
-            raise
-
-    await query.answer("Статус обновлён")
-
-
+    # Публикация в групповой чат
+    await bot.send_message(
+        config.GROUP_CHAT_ID,
+        f"{user.full_name} — {status_label}",
+        reply_markup=get_status_keyboard()
+    )
