@@ -12,8 +12,12 @@ router = Router()
 logger = logging.getLogger(__name__)
 db = Database()
 
-@router.message(content_types=types.ContentType.LOCATION)
+@router.message()
 async def on_location(message: types.Message, bot: Bot):
+    # Просто пропускаем, если это не локация
+    if message.location is None:
+        return
+
     user = message.from_user
 
     if user.id not in config.AUTHORIZED_IDS:
@@ -25,7 +29,6 @@ async def on_location(message: types.Message, bot: Bot):
         )
 
     loc = message.location
-    # Здесь period можно расширить через FSM; пока дефолт
     db.save_location(user.id, loc.latitude, loc.longitude, period="default")
 
     await message.reply("✅ Локация сохранена!")

@@ -2,6 +2,7 @@
 
 import logging
 from aiogram import Bot, Dispatcher, types
+from aiogram.client.default import DefaultBotProperties
 from aiogram.filters.chat_member_updated import ChatMemberUpdatedFilter
 from aiogram.enums.chat_member_status import ChatMemberStatus
 
@@ -34,17 +35,15 @@ def main():
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
     )
-    bot = Bot(token=config.TOKEN, parse_mode="HTML")
+    bot = Bot(
+        token=config.TOKEN,
+        default=DefaultBotProperties(parse_mode="HTML")
+    )
     dp = Dispatcher()
 
     dp.include_router(commands_router)
     dp.include_router(callbacks_router)
     dp.include_router(locations_router)
-
-    dp.on_event(
-        ChatMemberUpdatedFilter(member_status_changed=ChatMemberStatus.MEMBER),
-        on_bot_added_to_group
-    )
 
     logger.info("🚀 Bot started")
     dp.run_polling(bot)

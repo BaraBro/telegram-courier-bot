@@ -1,18 +1,28 @@
 # keyboards.py
 
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 def get_status_keyboard() -> InlineKeyboardMarkup:
-    kb = InlineKeyboardMarkup(row_width=2)
-    kb.add(
-        InlineKeyboardButton("🏠 База", callback_data="status_base"),
-        InlineKeyboardButton("🚚 Уехал", callback_data="status_away"),
-        InlineKeyboardButton("🔧 Сломался", callback_data="status_broke"),
-        InlineKeyboardButton("📋 По делам", callback_data="status_busy"),
-        InlineKeyboardButton("⛽ Заправка", callback_data="status_fuel"),
-    )
-    return kb
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🏠 База", callback_data="status_base"),
+            InlineKeyboardButton(text="🚚 Уехал", callback_data="status_away"),
+        ],
+        [
+            InlineKeyboardButton(text="🔧 Сломался", callback_data="status_broke"),
+            InlineKeyboardButton(text="📋 По делам", callback_data="status_busy"),
+        ],
+        [
+            InlineKeyboardButton(text="⛽ Заправка", callback_data="status_fuel"),
+        ]
+    ])
 
-location_kb = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True).add(
-    KeyboardButton("Отправить локацию", request_location=True)
+# ✅ Обновлённый вариант с keyboard=[[]]
+location_kb = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Отправить локацию", request_location=True)]
+    ],
+    resize_keyboard=True,
+    one_time_keyboard=True
 )
