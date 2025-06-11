@@ -1,3 +1,5 @@
+# utils/encryption.py
+
 import os
 import base64
 import logging
@@ -15,35 +17,38 @@ def generate_key_from_string(password: str, salt: bytes = None) -> bytes:
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
-        iterations=100_000,
+        iterations=390000,
         backend=default_backend()
     )
-    return base64.urlsafe_b64encode(kdf.derive(password.encode()))
+    key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
+    return key
 
 def validate_fernet_key(key: Optional[str]) -> bool:
-    if not key: return False
+    if not key:
+        return False
     try:
         Fernet(key.encode())
         return True
-    except Exception as e:
-        logger.warning(f"Invalid Fernet key: {e}")
+    except Exception:
         return False
 
 def encrypt_data(data: str, key: Optional[str] = None) -> bytes:
+    """
+    Шифрует строку data в байты. Если key невалиден — возвращает data.encode().
+    """
     if not validate_fernet_key(key):
-        logger.debug("Encryption skipped: bad or missing key")
         return data.encode("utf-8")
-    try:
-        return Fernet(key.encode()).encrypt(data.encode("utf-8"))
-    except Exception as e:
-        logger.error(f"Encryption error: {e}")
-        return data.encode("utf-8")
+    return Fernet(key.encode()).encrypt(data.encode("utf-8"))
 
 def decrypt_data(encrypted: bytes, key: Optional[str] = None) -> Optional[str]:
+    """
+    Расшифровывает байты encrypted. Если key невалиден — пытается .decode(),
+    иначе возвращает None в случае ошибки.
+    """
     if not validate_fernet_key(key):
         try:
             return encrypted.decode("utf-8")
-        except:
+        except Exception:
             return None
     try:
         return Fernet(key.encode()).decrypt(encrypted).decode("utf-8")
@@ -53,3 +58,7 @@ def decrypt_data(encrypted: bytes, key: Optional[str] = None) -> Optional[str]:
     except Exception as e:
         logger.error(f"Decrypt error: {e}")
         return None
+
+# Алиасы для обратной совместимости с core/database.py
+encrypt = encrypt_data
+decrypt = decrypt_data

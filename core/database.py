@@ -6,7 +6,7 @@ import time
 import shutil
 from threading import Lock
 
-from utils import encryption
+from utils.encryption import encrypt, decrypt  # теперь эти имена доступны
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 DB_FILE = os.path.join(BASE_DIR, "statuses.json")
@@ -22,9 +22,10 @@ class Database:
             data = {"statuses": {}, "locations": {}, "users_started": []}
             self._write_raw(json.dumps(data).encode())
             return data
+
         raw = open(DB_FILE, "rb").read()
         try:
-            text = encryption.decrypt(raw)
+            text = decrypt(raw, key=os.getenv("ENCRYPTION_KEY"))
         except Exception:
             text = raw.decode("utf-8")
         return json.loads(text)
@@ -32,15 +33,16 @@ class Database:
     def _write_raw(self, payload: bytes) -> None:
         os.makedirs(BACKUP_DIR, exist_ok=True)
         if os.path.exists(DB_FILE):
-            timestamp = int(time.time())
-            shutil.copy2(DB_FILE, os.path.join(BACKUP_DIR, f"{timestamp}_statuses.json"))
+            # бэкапим старый файл
+            backup_name = f"{int(time.time())}_statuses.json"
+            shutil.copy2(DB_FILE, os.path.join(BACKUP_DIR, backup_name))
         with open(DB_FILE, "wb") as f:
             f.write(payload)
 
     def _save(self) -> None:
         with self._lock:
             text = json.dumps(self._data)
-            encrypted = encryption.encrypt(text)
+            encrypted = encrypt(text, key=os.getenv("ENCRYPTION_KEY"))
             self._write_raw(encrypted)
 
     def load_statuses(self) -> dict[str, str]:

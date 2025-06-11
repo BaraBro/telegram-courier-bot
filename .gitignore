@@ -1,20 +1,17 @@
-# Виртуальное окружение
+# виртуальное окружение
 venv/
-__pycache__/
+.venv/
 
-# Логи
-logs/
-*.log
-
-# Статусы (если не хотите версионировать)
-statuses.json
-
-# IDE / macOS
-.vscode/
-.DS_Store
-
-# артефакты
-project.zip
-.env
+# кэш Python и редакторов
 __pycache__/
 *.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# логи и бэкапы
+logs/
+backups/
+statuses.json
+
+# файл окружения
+.env
