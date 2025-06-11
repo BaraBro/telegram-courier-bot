@@ -15,15 +15,17 @@ logger = logging.getLogger(__name__)
 
 async def on_bot_added_to_group(event: types.ChatMemberUpdated, bot: Bot):
     if event.new_chat_member.status == ChatMemberStatus.MEMBER:
-        chat = event.chat
         text = build_welcome_text()
         await bot.send_message(
-            chat_id=chat.id,
+            chat_id=event.chat.id,
             text=text,
             reply_markup=get_status_keyboard()
         )
         try:
-            await bot.pin_chat_message(chat_id=chat.id, message_id=event.message.message_id)
+            await bot.pin_chat_message(
+                chat_id=event.chat.id,
+                message_id=event.related_message.message_id
+            )
         except Exception:
             pass
 
@@ -44,7 +46,7 @@ def main():
         on_bot_added_to_group
     )
 
-    logger.info("Бот запущен")
+    logger.info("🚀 Bot started")
     dp.run_polling(bot)
 
 if __name__ == "__main__":

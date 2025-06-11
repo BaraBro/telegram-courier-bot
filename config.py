@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     encryption_key: str | None = None
     group_chat_id: int
     authorized_ids: set[int] = Field(default_factory=set)
-    work_start: str
-    work_end: str
+    work_start: str   # "HH:MM"
+    work_end: str     # "HH:MM"
     timezone: str
 
     @field_validator("work_start", "work_end")

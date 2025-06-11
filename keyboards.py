@@ -13,7 +13,6 @@ def get_status_keyboard() -> InlineKeyboardMarkup:
     )
     return kb
 
-def get_location_keyboard() -> ReplyKeyboardMarkup:
-    kb = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    kb.add(KeyboardButton("Отправить локацию", request_location=True))
-    return kb
+location_kb = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True).add(
+    KeyboardButton("Отправить локацию", request_location=True)
+)

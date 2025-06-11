@@ -1,25 +1,21 @@
-import os
+# utils/logger.py
+
 import logging
 from logging.handlers import RotatingFileHandler
+import os
+
+LOG_FILE = os.path.join(os.path.dirname(__file__), "..", "bot.log")
 
 def setup_logger():
-    os.makedirs("logs", exist_ok=True)
-    fmt = "%(asctime)s [%(levelname)s] %(module)s:%(lineno)d ▶ %(message)s"
-    formatter = logging.Formatter(fmt)
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
 
-    fh = RotatingFileHandler("logs/bot.log", maxBytes=5*1024*1024, backupCount=3, encoding="utf-8")
-    fh.setFormatter(formatter)
-    fh.setLevel(logging.INFO)
+    fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
+    fh = RotatingFileHandler(LOG_FILE, maxBytes=5_000_000, backupCount=5, encoding="utf-8")
+    fh.setFormatter(fmt)
+    logger.addHandler(fh)
 
     ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    ch.setLevel(logging.INFO)
-
-    root = logging.getLogger()
-    root.handlers.clear()
-    root.setLevel(logging.INFO)
-    root.addHandler(fh)
-    root.addHandler(ch)
-
-    logging.getLogger(__name__).info("✅ Logger configured")
-
+    ch.setFormatter(fmt)
+    logger.addHandler(ch)

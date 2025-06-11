@@ -39,9 +39,8 @@ async def ensure_started(message: types.Message) -> bool:
 
 @router.message(Command("start"))
 async def cmd_start(message: types.Message, bot: Bot):
-    user = message.from_user
-    db.set_started(user.id)
-    logger.info(f"/start от {user.id} ({user.full_name})")
+    db.set_started(message.from_user.id)
+    logger.info(f"/start от {message.from_user.id}")
     text = build_welcome_text()
     if message.chat.type in ("group", "supergroup"):
         await message.answer(text, reply_markup=get_status_keyboard())
@@ -65,7 +64,7 @@ async def cmd_help(message: types.Message, bot: Bot):
     try:
         await bot.send_message(message.from_user.id, HELP_TEXT, parse_mode="Markdown")
         await message.reply("✅ Инструкция отправлена в ЛС.")
-    except Exception:
+    except:
         await message.reply("❗ Откройте ЛС со мной и повторите /help.")
 
 @router.message(Command("status"))
@@ -73,12 +72,11 @@ async def cmd_status(message: types.Message, bot: Bot):
     if not await ensure_started(message):
         return
 
-    user = message.from_user
-    if user.id not in config.AUTHORIZED_IDS:
+    if message.from_user.id not in config.AUTHORIZED_IDS:
         return await message.reply("❌ У вас нет прав для этой команды.")
     report = StatusManager().get_report()
     try:
-        await bot.send_message(user.id, report, parse_mode="HTML")
+        await bot.send_message(message.from_user.id, report, parse_mode="HTML")
         await message.reply("✅ Статус отправлен в ЛС.")
-    except Exception:
+    except:
         await message.reply("❗ Откройте ЛС со мной и повторите /status.")
