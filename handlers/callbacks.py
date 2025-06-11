@@ -2,7 +2,6 @@
 
 import logging
 from aiogram import Router, types, Bot
-from aiogram.filters.text import Text
 
 import config
 from keyboards import get_status_keyboard
@@ -13,7 +12,7 @@ router = Router()
 logger = logging.getLogger(__name__)
 db = Database()
 
-@router.callback_query(Text(startswith="status_"))
+@router.callback_query(lambda cq: cq.data is not None and cq.data.startswith("status_"))
 async def on_status_callback(cq: types.CallbackQuery, bot: Bot):
     user = cq.from_user
 
@@ -28,6 +27,7 @@ async def on_status_callback(cq: types.CallbackQuery, bot: Bot):
             show_alert=True
         )
 
+    # Разбор callback_data
     key = cq.data.split("status_", 1)[1]
     labels = {
         "base": "🏠 База",
