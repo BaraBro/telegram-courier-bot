@@ -2,7 +2,7 @@
 
 import logging
 from aiogram import Router, types, Bot
-from aiogram.filters import Text
+from aiogram.filters.text import Text
 
 import config
 from keyboards import get_status_keyboard
@@ -28,7 +28,6 @@ async def on_status_callback(cq: types.CallbackQuery, bot: Bot):
             show_alert=True
         )
 
-    # Извлечь ключ статуса и получить метку
     key = cq.data.split("status_", 1)[1]
     labels = {
         "base": "🏠 База",
