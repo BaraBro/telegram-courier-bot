@@ -12,7 +12,7 @@ from core.database import Database
 
 router = Router()
 logger = logging.getLogger(__name__)
-db = Database()  # единый экземпляр БД
+db = Database()
 
 def build_welcome_text() -> str:
     return (
@@ -31,7 +31,6 @@ def build_welcome_text() -> str:
     )
 
 async def ensure_started(message: types.Message) -> bool:
-    """Проверить, вызывал ли пользователь /start, иначе попросить."""
     uid = message.from_user.id
     if not db.has_started(uid):
         await message.reply("⚠️ Пожалуйста, сначала нажмите /start.")
@@ -41,9 +40,7 @@ async def ensure_started(message: types.Message) -> bool:
 @router.message(Command("start"))
 async def cmd_start(message: types.Message, bot: Bot):
     user = message.from_user
-    # Сохраняем флаг старта в БД
     db.set_started(user.id)
-
     logger.info(f"/start от {user.id} ({user.full_name})")
     text = build_welcome_text()
     if message.chat.type in ("group", "supergroup"):
