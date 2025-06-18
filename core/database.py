@@ -39,13 +39,6 @@ class Database:
             encrypted = encryption.encrypt(text)
             self._write_raw(encrypted)
 
-    def load_statuses(self) -> dict[str, str]:
-        return self._data.get("statuses", {})
-
-    def save_status(self, user_id: int, status: str) -> None:
-        self._data.setdefault("statuses", {})[str(user_id)] = status
-        self._save()
-
     def load_locations(self) -> dict[str, dict]:
         return self._data.get("locations", {})
 
@@ -66,3 +59,40 @@ class Database:
 
     def has_started(self, user_id: int) -> bool:
         return user_id in set(self._data.get("users_started", []))
+
+    # ======== Глобальный /start за смену ========
+    def get_global_start(self) -> float | None:
+        """Время последнего однократного /start за текущую смену."""
+        return self._data.setdefault("meta", {}).get("global_start")
+
+    def set_global_start(self, ts: float) -> None:
+        """Записать метку времени первого /start за смену."""
+        meta = self._data.setdefault("meta", {})
+        meta["global_start"] = ts
+        self._save()
+        
+    def save_status(self, user_id: int, status_label: str) -> None:
+        """Сохраняем новый статус с текущей UNIX-меткой."""
+        now = int(time.time())
+        self._data.setdefault("statuses", {})[str(user_id)] = {
+            "status": status_label,
+            "ts": now
+        }
+        self._save()
+
+    def load_statuses(self) -> dict[str, dict]:
+        """Возвращаем { user_id: { 'status': str, 'ts': int }, … }."""
+        return self._data.get("statuses", {})
+
+    def save_status(self, user_id: int, status_label: str) -> None:
+        """Сохраняем новый статус с текущей UNIX-меткой."""
+        now = int(time.time())
+        self._data.setdefault("statuses", {})[str(user_id)] = {
+            "status": status_label,
+            "ts": now
+        }
+        self._save()
+
+    def load_statuses(self) -> dict[str, dict]:
+        """Возвращаем {user_id: {"status":…, "ts":…}}."""
+        return self._data.get("statuses", {})

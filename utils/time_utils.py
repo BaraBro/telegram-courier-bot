@@ -22,3 +22,17 @@ def in_work_time() -> bool:
     else:
         # окно пересекает полночь
         return now >= start or now <= end
+
+def get_shift_start_timestamp() -> float:
+    """
+    Возвращает UNIX-метку времени начала текущей смены:
+    если сейчас до WORK_START — начало вчерашней смены,
+    иначе — сегодня в WORK_START.
+    """
+    tz = pytz.timezone(config.TIMEZONE)
+    now = datetime.now(tz)
+    hh, mm = map(int, config.WORK_START_STR.split(":"))
+    shift_start = datetime(now.year, now.month, now.day, hh, mm, tzinfo=tz)
+    if now.time() < shift_start.time():
+        shift_start -= timedelta(days=1)
+    return shift_start.timestamp()
