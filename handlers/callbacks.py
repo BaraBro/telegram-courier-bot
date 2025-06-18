@@ -46,7 +46,7 @@ async def show_status_popup(cq: types.CallbackQuery, bot: Bot):
         return await cq.answer("⚠️ GROUP_CHAT_ID не задан в конфиге.", show_alert=True)
     
     try:
-        report = StatusManager().get_report()
+        report = await StatusManager().get_report(bot)
         await cq.answer("✅ Отправляю отчёт в ЛС…", show_alert=True)
         await bot.send_message(cq.from_user.id, report, parse_mode="HTML")
     except TelegramBadRequest as e:
