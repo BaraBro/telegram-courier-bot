@@ -8,6 +8,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.filters.chat_member_updated import ChatMemberUpdatedFilter
 from aiogram.enums.chat_member_status import ChatMemberStatus
+from aiogram.fsm.storage.memory import MemoryStorage
 
 import config
 from handlers.commands import router as commands_router, build_welcome_text
@@ -66,6 +67,7 @@ async def main():
     # регистрация роутеров
     dp.include_router(commands_router)
     dp.include_router(callbacks_router)
+    dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(locations_router)
     # регистрация автоприветствия в группу
     dp.my_chat_member.register(on_bot_added_to_group, ChatMemberUpdatedFilter(member_status_changed=ChatMemberStatus.MEMBER))

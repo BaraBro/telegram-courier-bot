@@ -4,18 +4,13 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 def get_status_keyboard() -> InlineKeyboardMarkup:
+    # Оставляем только три кнопки: База, Уехал, По делам
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="🏠 База", callback_data="status_base"),
-            InlineKeyboardButton(text="🚚 Уехал", callback_data="status_away"),
-        ],
-        [
-            InlineKeyboardButton(text="🔧 Сломался", callback_data="status_broke"),
+            InlineKeyboardButton(text="🏠 База",     callback_data="status_base"),
+            InlineKeyboardButton(text="🚚 Уехал",    callback_data="status_away"),
             InlineKeyboardButton(text="📋 По делам", callback_data="status_busy"),
         ],
-        [
-            InlineKeyboardButton(text="⛽ Заправка", callback_data="status_fuel"),
-        ]
     ])
 
 # ✅ Обновлённый вариант с keyboard=[[]]

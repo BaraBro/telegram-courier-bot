@@ -1,5 +1,6 @@
 # core/database.py
 
+import time
 import os, json, time, shutil
 from threading import Lock
 from utils import encryption
@@ -96,3 +97,22 @@ class Database:
     def load_statuses(self) -> dict[str, dict]:
         """Возвращаем {user_id: {"status":…, "ts":…}}."""
         return self._data.get("statuses", {})
+    
+    def get_last_reset(self) -> int:
+        return self._data.get("last_reset_ts", 0)
+
+    def set_last_reset(self, ts: int):
+        self._data["last_reset_ts"] = ts
+        self._save()
+
+    def reset_statuses(self):
+        self._data["statuses"] = {}
+        self.set_last_reset(int(time.time()))
+        
+    def get_last_reset(self) -> int:
+        return self._data.get("last_reset", 0)
+
+    def reset_statuses(self) -> None:
+        self._data["statuses"] = {}
+        self._data["last_reset"] = int(time.time())
+        self._save()

@@ -9,6 +9,7 @@ from aiogram.enums.chat_type import ChatType
 from aiogram.filters.chat_member_updated import ChatMemberUpdatedFilter, PROMOTED_TRANSITION
 
 import config
+from config import AUTHORIZED_IDS
 from keyboards import get_status_keyboard
 from utils.status_manager import StatusManager
 from core.database import Database
@@ -21,7 +22,8 @@ logger = logging.getLogger(__name__)
 db = Database()
 
 # список ключевых слов (регистр не важен)
-BAD_WORDS = ["база", "baza", "base", "uehal", "uexal", "yehal", "yexal", "уехал", "по делам", "заправка", "azs", "azc", "азс"]
+BAD_WORDS = ["база", "baza", "base", "uehal", "uexal", "yehal", "yexal",
+             "уехал", "по делам"]
 
 @router.message(lambda m: isinstance(m.text, str) and any(
     re.search(rf"\b{w}\b", m.text, re.IGNORECASE) for w in BAD_WORDS
@@ -32,6 +34,9 @@ async def catch_free_text(m: types.Message, bot: Bot):
     удаляем, сохраняем статус и публикуем «нормальное» сообщение.
     """
     user = m.from_user
+    if user.id not in AUTHORIZED_IDS:
+        await m.delete()
+        return
     text = m.text.strip().lower()
     # находим ближайший ключ
     for w in BAD_WORDS:
@@ -47,14 +52,9 @@ async def catch_free_text(m: types.Message, bot: Bot):
         "uexal":    "🚚 Уехал",
         "yehal":    "🚚 Уехал",
         "yexal":    "🚚 Уехал",
-        "сломался": "🔧 Сломался",
         "по делам": "📋 По делам",
-        "заправка": "⛽ Заправка",
-        "азс":      "⛽ Заправка",
-        "azc":      "⛽ Заправка",
-        "azs":      "⛽ Заправка",
     }
-    status_label = labels.get(keyword, keyword)
+    status_label = labels.get(keyword)
     # удаляем сообщение
     await m.delete()
     # сохраняем в БД

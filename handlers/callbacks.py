@@ -1,5 +1,7 @@
 # handlers/callbacks.py
 import logging
+import time
+from utils.time_utils import get_shift_start_timestamp
 from typing import Optional
 from aiogram import Router, types, Bot
 from aiogram.exceptions import TelegramBadRequest
@@ -57,8 +59,25 @@ async def show_status_popup(cq: types.CallbackQuery, bot: Bot):
     except Exception as e:
         logger.error(f"Неожиданная ошибка: {e}", exc_info=True)
 
+@router.callback_query(lambda cq: cq.data == "status_base")
+async def base_start(cq: types.CallbackQuery, bot: Bot):
+    user = cq.from_user
+    # если первый раз сегодня:
+    if first_base_today(user.id):
+        # переключаем в FSM: ждем период
+        await cq.answer("Выберите период отслеживания", show_alert=True)
+        await Base.waiting_period.set()  # FSMState
+        return
+    # иначе — сразу обычный статус
+    db.save_status(user.id, "🏠 База")
+    
 @router.callback_query(lambda cq: cq.data.startswith("status_"))
 async def on_status_callback(cq: types.CallbackQuery, bot: Bot):
+    # 1) Сброс если новая смена
+    now = int(time.time())
+    shift0 = get_shift_start_timestamp()
+    if db.get_last_reset() < shift0:
+        db.reset_statuses()
     user = cq.from_user
     if user.id not in AUTHORIZED_IDS:
         return await cq.answer("❌ У вас нет прав изменять статус.", show_alert=True)
@@ -73,9 +92,7 @@ async def on_status_callback(cq: types.CallbackQuery, bot: Bot):
     labels = {
         "base": "🏠 База",
         "away": "🚚 Уехал",
-        "broke": "🔧 Сломался",
         "busy": "📋 По делам",
-        "fuel": "⛽ Заправка",
     }
     status_label = labels.get(key, key)
     
